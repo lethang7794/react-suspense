@@ -8,6 +8,7 @@ import {
   PokemonForm,
   PokemonDataView,
   PokemonErrorBoundary,
+  usePokemonResource,
 } from '../pokemon'
 import {createResource} from '../utils'
 
@@ -40,6 +41,11 @@ function getPokemonResource(name) {
   return pokemonResource
 }
 
+const PokemonResourceCacheContext = React.createContext(getPokemonResource)
+function usePokemonResourceCache() {
+  return React.useContext(PokemonResourceCacheContext)
+}
+
 function createPokemonResource(pokemonName) {
   return createResource(fetchPokemon(pokemonName))
 }
@@ -48,6 +54,7 @@ function App() {
   const [pokemonName, setPokemonName] = React.useState('')
   const [startTransition, isPending] = React.useTransition(SUSPENSE_CONFIG)
   const [pokemonResource, setPokemonResource] = React.useState(null)
+  const getPokemonResource = usePokemonResourceCache()
 
   React.useEffect(() => {
     if (!pokemonName) {
@@ -57,7 +64,7 @@ function App() {
     startTransition(() => {
       setPokemonResource(getPokemonResource(pokemonName))
     })
-  }, [pokemonName, startTransition])
+  }, [getPokemonResource, pokemonName, startTransition])
 
   function handleSubmit(newPokemonName) {
     setPokemonName(newPokemonName)
