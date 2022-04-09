@@ -2,13 +2,14 @@
 // http://localhost:3000/isolated/exercise/04.js
 
 import * as React from 'react'
+import {useEffect} from 'react'
 import {
   fetchPokemon,
   PokemonInfoFallback,
   PokemonForm,
   PokemonDataView,
   PokemonErrorBoundary,
-  usePokemonResource,
+  // usePokemonResource,
 } from '../pokemon'
 import {createResource} from '../utils'
 
@@ -29,20 +30,40 @@ const SUSPENSE_CONFIG = {
   busyDelayMs: 300,
   busyMinDurationMs: 700,
 }
+const POKEMON_CACHE_TIMEOUT = 5000
 
 const PokemonCacheContext = React.createContext(undefined)
 
 function PokemonCacheProvider({children}) {
   const cache = React.useRef({}).current
+  const [pokemonName, setPokemonName] = React.useState('')
 
-  const getPokemonResource = React.useCallback(name => {
-    let pokemonResource = cache[name]
-    if (!pokemonResource) {
-      pokemonResource = createPokemonResource(name)
-      cache[name] = pokemonResource
+  const getPokemonResource = React.useCallback(
+    name => {
+      let pokemonResource = cache[name]
+      if (!pokemonResource) {
+        pokemonResource = createPokemonResource(name)
+        cache[name] = pokemonResource
+        setPokemonName(name)
+      }
+      return pokemonResource
+    },
+    [cache],
+  )
+
+  useEffect(() => {
+    let id
+    if (cache && pokemonName) {
+      id = setTimeout(() => {
+        cache[pokemonName] = undefined
+        console.log(`Cache for ${pokemonName} should be expired`)
+      }, POKEMON_CACHE_TIMEOUT)
     }
-    return pokemonResource
-  }, [])
+
+    return () => {
+      clearTimeout(id)
+    }
+  }, [pokemonName, cache])
 
   return (
     <PokemonCacheContext.Provider value={getPokemonResource}>
