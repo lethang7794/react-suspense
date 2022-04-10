@@ -8,7 +8,7 @@ import {
   PokemonForm,
   PokemonDataView,
   PokemonErrorBoundary,
-  usePokemonResource,
+  // usePokemonResource,
 } from '../pokemon'
 import {createResource} from '../utils'
 
@@ -32,17 +32,38 @@ const SUSPENSE_CONFIG = {
 
 const PokemonCacheContext = React.createContext(undefined)
 
-function PokemonCacheProvider({children}) {
+function PokemonCacheProvider({children, cacheTime = 0}) {
   const cache = React.useRef({}).current
+  const expirations = React.useRef({}).current
 
-  const getPokemonResource = React.useCallback(name => {
-    let pokemonResource = cache[name]
-    if (!pokemonResource) {
-      pokemonResource = createPokemonResource(name)
-      cache[name] = pokemonResource
+  const getPokemonResource = React.useCallback(
+    name => {
+      let pokemonResource = cache[name]
+      if (!pokemonResource) {
+        pokemonResource = createPokemonResource(name)
+        cache[name] = pokemonResource
+        expirations[name] = Date.now() + cacheTime
+      }
+      return pokemonResource
+    },
+    [cache, expirations, cacheTime],
+  )
+
+  React.useEffect(() => {
+    const intervalId = setInterval(() => {
+      const now = Date.now()
+      for (const [name, expiredTime] of Object.entries(expirations)) {
+        if (expiredTime < now) {
+          delete cache[name]
+          delete expirations[name]
+        }
+      }
+    }, 1000)
+
+    return () => {
+      clearInterval(intervalId)
     }
-    return pokemonResource
-  }, [])
+  }, [cache, expirations])
 
   return (
     <PokemonCacheContext.Provider value={getPokemonResource}>
@@ -61,7 +82,7 @@ function createPokemonResource(pokemonName) {
 
 function AppWithProvider() {
   return (
-    <PokemonCacheProvider>
+    <PokemonCacheProvider cacheTime={5000}>
       <App />
     </PokemonCacheProvider>
   )
